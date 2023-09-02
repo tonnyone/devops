@@ -8,7 +8,6 @@ devops tools practice
 - Cloud and Containers - while not 100% must in all companies/positions, this skill is on the rise every year and many (if not most) of the positions/companies require this skill. This specifically means: AWS/Azure/GCP, Docker/Podman, Kubernetes, ...
 - CI/CD - Be able to to answer questions like "Why do we need CI/CD?" and "What ways and models are there to perform CI/CD?". Eventually, practice assembling such processes and workflow, using whatever tools you feel comfortable with.
 
-
 https://github.com/bregman-arie/devops-exercises
 
 

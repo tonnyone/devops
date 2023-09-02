@@ -19,6 +19,7 @@ http://localhost:3000/   admin/admin
 
 ### 使用
 https://grafana.com/docs/grafana/latest/getting-started/build-first-dashboard/
+
 ### grafana 和 influxDB
 
 
