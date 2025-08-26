@@ -810,3 +810,70 @@ top -p $(pgrep squid)
 - [RFC 2817 - Upgrading to TLS Within HTTP/1.1](https://tools.ietf.org/html/rfc2817)
 - [MDN - HTTP CONNECT](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/CONNECT)
 - [Squid配置指南](http://www.squid-cache.org/Doc/config/)
+
+
+# 协议封装与隧道机制
+
+## CONNECT隧道的数据封装原理
+
+1. **建立阶段**：
+    - 客户端先通过HTTP协议向代理发送`CONNECT host:port HTTP/1.1`请求。
+    - 代理服务器与目标主机建立TCP连接，返回`HTTP/1.1 200 Connection established`。
+    - 到此为止，HTTP协议的部分结束，后续所有数据都在TCP隧道中传输。
+
+2. **隧道阶段**：
+    - 代理服务器不再解析任何应用层协议（如HTTP、TLS等），而是将客户端和目标服务器之间的**原始字节流**进行**透明转发**。
+    - 这意味着：
+      - 客户端发出的每一个字节，代理都原样转发给目标主机。
+      - 目标主机返回的每一个字节，代理也原样转发给客户端。
+    - 隧道内的数据结构：
+      - 没有HTTP头部，也没有任何代理自定义的封装。
+      - 例如HTTPS场景，隧道内就是TLS握手、加密HTTP请求等二进制流。
+
+3. **协议无关性**：
+    - 隧道内可以承载任何基于TCP的协议（如TLS、WebSocket、IMAPS等）。
+    - 代理服务器无法识别、解析或修改隧道内的数据内容。
+
+## 数据流示意
+
+```
+客户端                代理服务器                目标服务器
+    |  CONNECT ...  |  ----------------->  |  (建立TCP连接)
+    |<-- 200 OK ----|  <-----------------  |
+    |  TLS握手/数据  |  ================>  |  TLS握手/数据
+    |<==============|  <=================  |
+```
+
+## 抓包示例
+
+1. **CONNECT建立阶段**（明文HTTP）
+```
+CONNECT www.example.com:443 HTTP/1.1\r\n
+Host: www.example.com:443\r\n
+...（其他头部）\r\n
+\r\n
+HTTP/1.1 200 Connection established\r\n
+\r\n
+```
+2. **隧道阶段**（原始二进制流）
+```
+[TLS握手数据/加密HTTP请求/响应]  # 代理只做字节转发
+```
+
+3. **tcpdump抓包**
+```bash
+sudo tcpdump -i any -A 'host <proxy_ip> and port <proxy_port>'
+# 可以看到CONNECT请求和200响应，后续都是不可读的二进制流
+```
+
+## 为什么代理无法解析隧道内数据？
+
+- CONNECT隧道建立后，代理只负责TCP层的“搬运工”，不再参与应用层协议。
+- 例如HTTPS，TLS握手和加密内容都在隧道内，代理无法解密。
+- 这保证了端到端的安全性和隐私。
+
+## 小结
+
+- HTTP CONNECT的隧道机制本质是“TCP字节流透明转发”，没有额外封装。
+- 代理只参与隧道建立，后续数据完全不解析、不修改。
+- 这也是HTTPS等加密协议能安全穿越HTTP代理的根本原因。
